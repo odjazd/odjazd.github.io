@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control-Dot LLC | Equilateral Sierpinski Triangle</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background-color: #000;
+            color: #fff;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+        }
+        
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        canvas {
+            display: block;
+            transform-origin: center center;
+        }
+        
+        #contact-info {
+            position: absolute;
+            top: 25px;
+            right: 25px;
+            z-index: 2;
+            padding: 15px 20px;
+            background-color: rgba(0, 0, 0, 0.85);
+            border-radius: 4px;
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            text-align: right;
+            font-size: 14px;
+            line-height: 1.5;
+            max-width: 280px;
+        }
+        
+        #company-name {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 6px;
+            letter-spacing: 0.5px;
+            color: #fff;
+        }
+        
+        #address {
+            color: #aaa;
+            margin-bottom: 4px;
+            font-size: 13px;
+        }
+        
+        #contact-email {
+            color: #fff;
+            text-decoration: none;
+            font-weight: 500;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+            padding-bottom: 1px;
+            transition: border-color 0.3s ease;
+        }
+        
+        #contact-email:hover {
+            border-color: #fff;
+        }
+        
+        @media (max-width: 768px) {
+            #contact-info {
+                top: 15px;
+                right: 15px;
+                left: 15px;
+                max-width: none;
+                text-align: center;
+                padding: 12px 15px;
+                font-size: 13px;
+            }
+            
+            #company-name {
+                font-size: 16px;
+            }
+            
+            #address {
+                font-size: 12px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            #contact-info {
+                top: 10px;
+                right: 10px;
+                left: 10px;
+                padding: 10px 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container">
+        <canvas id="triangleCanvas"></canvas>
+    </div>
+    
+    <div id="contact-info">
+        <div id="company-name">Control-Dot LLC</div>
+        <div id="address">16192 Coastal Highway, Lewes<br>Delaware 19958</div>
+        <div><a href="mailto:contact@ctrldot.com" id="contact-email">contact@ctrldot.com</a></div>
+    </div>
+
+    <script>
+        // Canvas setup with fixed size
+        const canvas = document.getElementById('triangleCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Fixed canvas dimensions
+        const FIXED_SIZE = 1000;
+        
+        // Set canvas to fixed size
+        canvas.width = FIXED_SIZE;
+        canvas.height = FIXED_SIZE;
+        
+        // Equilateral triangle calculations
+        const triangleHeight = FIXED_SIZE * 0.8; // 80% of canvas height
+        const sideLength = (triangleHeight * 2) / Math.sqrt(3); // Equilateral triangle formula
+        
+        // Calculate vertices for equilateral triangle centered in canvas
+        const centerX = FIXED_SIZE / 2;
+        const centerY = FIXED_SIZE / 2;
+        
+        // Top vertex
+        const topX = centerX;
+        const topY = centerY - triangleHeight / 2;
+        
+        // Bottom left vertex
+        const bottomLeftX = centerX - sideLength / 2;
+        const bottomLeftY = centerY + triangleHeight / 2;
+        
+        // Bottom right vertex
+        const bottomRightX = centerX + sideLength / 2;
+        const bottomRightY = centerY + triangleHeight / 2;
+        
+        // Triangle vertices (all edges equal - equilateral triangle)
+        const vertices = [
+            { x: topX, y: topY },                // Top vertex
+            { x: bottomLeftX, y: bottomLeftY },  // Bottom left vertex
+            { x: bottomRightX, y: bottomRightY } // Bottom right vertex
+        ];
+        
+        // Verify all sides are equal (for debugging)
+        function calculateDistance(p1, p2) {
+            return Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
+        }
+        
+        const side1 = calculateDistance(vertices[0], vertices[1]);
+        const side2 = calculateDistance(vertices[1], vertices[2]);
+        const side3 = calculateDistance(vertices[2], vertices[0]);
+        console.log(`Equilateral triangle sides: ${side1.toFixed(2)}, ${side2.toFixed(2)}, ${side3.toFixed(2)}`);
+        
+        // Animation state
+        let animationId = null;
+        let zoomLevel = 1;
+        let zoomSpeed = 0.0002;
+        let points = [];
+        
+        // Initialize with a random point inside the triangle
+        function initializePoints() {
+            // Start with the centroid (center of mass) of the equilateral triangle
+            const centroidX = (vertices[0].x + vertices[1].x + vertices[2].x) / 3;
+            const centroidY = (vertices[0].y + vertices[1].y + vertices[2].y) / 3;
+            
+            points = [{
+                x: centroidX,
+                y: centroidY
+            }];
+        }
+        
+        initializePoints();
+        
+        // Draw the Sierpinski triangle
+        function drawTriangle() {
+            // Clear canvas with black background
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, FIXED_SIZE, FIXED_SIZE);
+            
+            // Apply zoom transformation (centered on triangle center)
+            ctx.save();
+            ctx.translate(centerX, centerY);
+            ctx.scale(zoomLevel, zoomLevel);
+            ctx.translate(-centerX, -centerY);
+            
+            // Draw all points in white
+            ctx.fillStyle = '#ffffff';
+            const pointSize = Math.max(1.2, 2 / zoomLevel);
+            
+            for (const point of points) {
+                ctx.fillRect(point.x, point.y, pointSize, pointSize);
+            }
+            
+            ctx.restore();
+        }
+        
+        // Generate next point in Sierpinski triangle
+        function generateNextPoint() {
+            if (points.length >= 80000) {
+                // Keep only recent points for performance
+                points = points.slice(points.length - 15000);
+            }
+            
+            // Choose a random vertex
+            const randomVertex = vertices[Math.floor(Math.random() * 3)];
+            
+            // Get the last point
+            const lastPoint = points[points.length - 1];
+            
+            // Calculate midpoint between last point and random vertex
+            const newPoint = {
+                x: (lastPoint.x + randomVertex.x) / 2,
+                y: (lastPoint.y + randomVertex.y) / 2
+            };
+            
+            points.push(newPoint);
+        }
+        
+        // Animation loop
+        function animate() {
+            // Update zoom
+            zoomLevel += zoomSpeed;
+            
+            // Generate new points
+            for (let i = 0; i < 120; i++) {
+                generateNextPoint();
+            }
+            
+            // Draw the triangle
+            drawTriangle();
+            
+            // Continue animation
+            animationId = requestAnimationFrame(animate);
+        }
+        
+        // Initialize and start animation
+        window.addEventListener('load', () => {
+            animate();
+        });
+        
+        // Add subtle hover effect to contact info
+        const contactInfo = document.getElementById('contact-info');
+        contactInfo.addEventListener('mouseenter', function() {
+            this.style.backgroundColor = 'rgba(20, 20, 20, 0.95)';
+            this.style.borderColor = 'rgba(255, 255, 255, 0.25)';
+        });
+        
+        contactInfo.addEventListener('mouseleave', function() {
+            this.style.backgroundColor = 'rgba(0, 0, 0, 0.85)';
+            this.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+        });
+        
+        // Adjust zoom speed based on device
+        if (window.innerWidth < 768) {
+            zoomSpeed = 0.00015;
+        }
+        
+        // Add window resize handler to maintain centering
+        window.addEventListener('resize', () => {
+            // Canvas stays fixed size, container adjusts centering
+        });
+    </script>
+</body>
+</html>
